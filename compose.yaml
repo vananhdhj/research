@@ -1,0 +1,17 @@
+services:
+  todo-app:
+    build:
+      context: .
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    ports:
+      - "8080:80"
+    env_file:
+      - .env
+    restart: always
+
+# How to run:
+# 1. Ensure your .env file has the Supabase credentials
+# 2. Run: docker compose up --build -d
+# 3. Open: http://localhost:8080

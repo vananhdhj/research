@@ -1,21 +1,25 @@
 import { gql } from '@apollo/client';
 
 export const GET_TODOS = gql`
-  query GetTodos {
-    todosCollection {
-      edges {
-        node {
-          id
-          title
-          is_complete
-        }
-      }
-    }
-  }
+  query GetTodos($userId: UUID!) {  
+  todosCollection(  
+    filter: { user_id: { eq: $userId } }  
+  ) {  
+    edges {  
+      node {  
+        id  
+        title  
+        is_complete  
+        created_at  
+      }  
+    }  
+  }  
+}
 `;
 
+
 export const ADD_TODO = gql`
-  mutation AddTodo($title: String!) {
+  mutation AddTodo($title: String!, $userId: UUID!) {
     insertIntotodosCollection(objects: [{ title: $title }]) {
       records {
         id
@@ -40,6 +44,20 @@ export const TOGGLE_TODO = gql`
   }
 `;
 
+export const UPDATE_TODO_TITLE = gql`
+  mutation UpdateTodoTitle($id: BigInt!, $title: String!) {
+    updatetodosCollection(
+      set: { title: $title }
+      filter: { id: { eq: $id } }
+    ) {
+      records {
+        id
+        title
+      }
+    }
+  }
+`;
+
 export const DELETE_TODO = gql`
   mutation DeleteTodo($id: BigInt!) {
     deleteFromtodosCollection(filter: { id: { eq: $id } }) {
@@ -49,3 +67,15 @@ export const DELETE_TODO = gql`
     }
   }
 `;
+
+export const DELETE_ALL_TODOS = gql`
+  mutation DeleteAllTodos {
+    deleteFromtodosCollection(filter: {}, atMost: 1000) {
+      affectedCount
+      records {
+        id
+      }
+    }
+  }
+`;
+
