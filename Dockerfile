@@ -5,10 +5,6 @@ FROM node:22-alpine AS build
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 
-# Pass ARGs to ENV so Vite can see them during 'npm run build'
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-
 WORKDIR /app
 
 # --- FAIL-FAST CHECK ---
@@ -22,7 +18,9 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+RUN VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+  VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+  npm run build
 
 # Stage 2: Production stage
 FROM nginx:stable-alpine

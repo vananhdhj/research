@@ -9,6 +9,10 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,41 +24,65 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Lint check
+      - name: Validate env (fail-fast)
+        run: |
+          [ -n "$VITE_SUPABASE_URL" ] || (echo "Missing SUPABASE_URL" && exit 1)
+          [ -n "$VITE_SUPABASE_ANON_KEY" ] || (echo "Missing SUPABASE_ANON_KEY" && exit 1)
+
+      - name: Lint
         run: npm run lint
 
-      - name: Run unit tests
+      - name: Unit test
         run: npm run test
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Type check & build
+      - name: Build app
         run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
   docker-build:
     needs: lint-and-test
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Ensure .env not included
+        run: |
+          if [ -f ".env" ]; then
+            echo ".env file should not be committed!"
+            exit 1
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image (Secure)
+      - name: Build Docker Image (FIXED)
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false # Set to true once you configure a Registry (e.g., Docker Hub)
+          push: false
+          load: true   # 🔥 FIX QUAN TRỌNG
           tags: todo-app:latest
+          no-cache: true
           build-args: |
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
+      - name: Verify image exists
+        run: docker images
+
+      - name: Run container (smoke test)
+        run: |
+          docker run -d -p 3000:3000 --name test-container todo-app:latest
+          sleep 5
+          curl -f http://localhost:3000 || (echo "App failed to respond" && exit 1)
+
+      - name: Show logs if failed
+        if: failure()
+        run: docker logs test-container
+
+      - name: Cleanup container
+        if: always()
+        run: docker rm -f test-container || true
