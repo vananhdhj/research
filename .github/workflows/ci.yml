@@ -75,9 +75,12 @@ jobs:
 
       - name: Run container (smoke test)
         run: |
-          docker run -d -p 3000:3000 --name test-container todo-app:latest
-          sleep 5
-          curl -f http://localhost:3000 || (echo "App failed to respond" && exit 1)
+          docker run -d -p 8080:80 --name test-container \
+            -e VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
+            -e VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            todo-app:latest
+          sleep 10
+          curl -f http://localhost:8080 || (echo "App failed to respond" && exit 1)
 
       - name: Show logs if failed
         if: failure()
